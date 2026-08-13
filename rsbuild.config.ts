@@ -106,6 +106,27 @@ export default defineConfig({
   },
   dev: { hmr: true },
   tools: {
+    // @deriv-com/ui ships CSS whose first line is
+    // `@import "https://fonts.googleapis.com/..."`, and the bundler keeps it.
+    // A remote @import at the top of a chunk makes that chunk's <link> fire
+    // onerror when the font host is unreachable — blocked, offline, or simply
+    // slow — and rspack turns that into CSS_CHUNK_LOAD_FAILED, which React
+    // Router renders as "Unexpected Application Error!" over the entire app.
+    // A missing font is not a reason for the terminal to be unusable, so the
+    // remote imports come out of the CSS; the same fonts are requested at
+    // runtime instead, where a failure only costs the typeface.
+    postcss: (_config, { addPlugins }) => {
+      addPlugins({
+        postcssPlugin: 'strip-remote-css-imports',
+        AtRule: {
+          import: (rule: { params: string; remove: () => void }) => {
+            if (/^\s*(url\(\s*)?["']?(https?:)?\/\//i.test(rule.params)) {
+              rule.remove();
+            }
+          },
+        },
+      });
+    },
     rspack: {
       module: {
         rules: [

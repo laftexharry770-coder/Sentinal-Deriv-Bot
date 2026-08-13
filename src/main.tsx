@@ -9,6 +9,7 @@ import {
     applyFaviconFromLogo,
     applyPrimaryColorFromConfig,
 } from './utils/document-branding';
+import { loadInterfaceFont } from './utils/load-web-font';
 import { performVersionCheck } from './utils/version-check';
 import './styles/index.scss';
 
@@ -17,6 +18,9 @@ configure({ isolateGlobalState: true });
 
 // Perform version check FIRST - before any other operations
 performVersionCheck();
+
+// The interface font, requested so that losing it costs only the typeface.
+loadInterfaceFont();
 
 // Apply deploy-time document branding (tab title, favicon, web font, and primary color).
 applyDocumentTitle();

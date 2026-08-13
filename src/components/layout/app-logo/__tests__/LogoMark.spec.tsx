@@ -1,6 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import brandConfig from '../../../../../brand.config.json';
 import { LOGO_CANDIDATES } from '../../../../utils/branding';
 import { LogoMark } from '../LogoMark';
+
+// Read from brand.config.json rather than repeating a literal. These assertions
+// were written against the vendor's own brand and broke the moment the app was
+// rebranded, which is a rename, not a regression — the behaviour under test is
+// that the header shows whatever name the brand config records.
+const APP_NAME = brandConfig.platform.name;
+const BADGE_LETTER = APP_NAME.charAt(0);
 
 // Default to the old-BFF fallback (all extension candidates) so the probing tests
 // exercise the full chain; individual tests reassign this to simulate a
@@ -16,7 +24,7 @@ jest.mock('../../../../utils/branding', () => {
 });
 
 // No NEXT_PUBLIC_DERIV_APP_NAME / preview name in the test env, so getAppName()
-// resolves to brand.config.json platform.name ("Deriv Trading Bot").
+// resolves to brand.config.json platform.name.
 describe('LogoMark', () => {
     const originalAppBuild = process.env.NEXT_PUBLIC_APP_BUILD;
 
@@ -30,7 +38,7 @@ describe('LogoMark', () => {
 
     it('renders the resolved app name', () => {
         render(<LogoMark />);
-        expect(screen.getByText('Deriv Trading Bot')).toBeInTheDocument();
+        expect(screen.getByText(APP_NAME)).toBeInTheDocument();
     });
 
     it('renders the logo image (first candidate) by default', () => {
@@ -48,7 +56,7 @@ describe('LogoMark', () => {
         }
         expect(screen.queryByRole('img')).not.toBeInTheDocument();
         // Letter badge shows the first letter of the app name.
-        expect(screen.getByText('D')).toBeInTheDocument();
+        expect(screen.getByText(BADGE_LETTER)).toBeInTheDocument();
     });
 
     it('skips logo file probing in the preview build and renders the letter badge', () => {
@@ -58,7 +66,7 @@ describe('LogoMark', () => {
         process.env.NEXT_PUBLIC_APP_BUILD = 'true';
         render(<LogoMark />);
         expect(screen.queryByRole('img')).not.toBeInTheDocument();
-        expect(screen.getByText('D')).toBeInTheDocument();
+        expect(screen.getByText(BADGE_LETTER)).toBeInTheDocument();
     });
 
     it('hides the name text when preview showAppName is false', () => {
@@ -71,7 +79,7 @@ describe('LogoMark', () => {
             setPreviewShowAppName(false);
         });
         render(<LogoMark />);
-        expect(screen.queryByText('Deriv Trading Bot')).not.toBeInTheDocument();
+        expect(screen.queryByText(APP_NAME)).not.toBeInTheDocument();
         act(() => {
             setPreviewShowAppName(true);
         });
@@ -82,7 +90,7 @@ describe('LogoMark', () => {
         render(<LogoMark />);
         // The BFF said no logo ships — no <img> probe (which would 404), only the badge.
         expect(screen.queryByRole('img')).not.toBeInTheDocument();
-        expect(screen.getByText('D')).toBeInTheDocument();
+        expect(screen.getByText(BADGE_LETTER)).toBeInTheDocument();
     });
 
     it('renders exactly the recorded logo_path when the BFF wrote one', () => {
@@ -92,6 +100,6 @@ describe('LogoMark', () => {
         // A failed load falls straight to the badge — no other extensions to guess.
         fireEvent.error(screen.getByRole('img'));
         expect(screen.queryByRole('img')).not.toBeInTheDocument();
-        expect(screen.getByText('D')).toBeInTheDocument();
+        expect(screen.getByText(BADGE_LETTER)).toBeInTheDocument();
     });
 });

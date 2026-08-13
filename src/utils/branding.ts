@@ -5,6 +5,17 @@ import brandConfig from '../../brand.config.json';
 // brand.config.json (see getLogoCandidates below).
 export const LOGO_CANDIDATES = ['/logo.png', '/logo.jpg', '/logo.jpeg', '/logo.webp'];
 
+/**
+ * Root-relative brand paths are recorded without the subpath a project site is
+ * served from, so "/logo.jpg" asks the domain root and 404s. The assets, the
+ * router and the OAuth redirect all carry PUBLIC_BASE_PATH; these must too.
+ */
+function withBasePath(path: string): string {
+    if (!path.startsWith('/')) return path;
+    const basePath = (process.env.PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
+    return `${basePath}${path}`;
+}
+
 type PlatformBrand = {
     name?: string;
     show_name?: boolean;
@@ -26,8 +37,8 @@ function getPlatform(): PlatformBrand | undefined {
  */
 export function getLogoCandidates(): string[] {
     const platform = getPlatform() ?? {};
-    if (platform.logo_path === undefined) return LOGO_CANDIDATES;
-    return platform.logo_path ? [platform.logo_path] : [];
+    if (platform.logo_path === undefined) return LOGO_CANDIDATES.map(withBasePath);
+    return platform.logo_path ? [withBasePath(platform.logo_path)] : [];
 }
 
 /**

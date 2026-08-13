@@ -32,6 +32,29 @@ export function loadWebFont(family: string): void {
     document.head.appendChild(link);
 }
 
+/**
+ * The interface font, requested the way a font should be requested: as a
+ * stylesheet link whose failure costs a typeface and nothing else.
+ *
+ * @deriv-com/ui's CSS asks for this font with a remote `@import` at the top of
+ * the file, which is a different proposition — when the font host cannot be
+ * reached, the whole stylesheet chunk fails to load, and the app is replaced by
+ * an error page over a missing typeface. The build strips those imports (see
+ * rsbuild.config.ts), and this puts the request back where it can fail safely.
+ */
+export function loadInterfaceFont(): void {
+    const id = 'webfont-ibm-plex-sans';
+    if (document.getElementById(id)) return;
+
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href =
+        'https://fonts.googleapis.com/css?family=IBM+Plex+Sans:300,400,500,700&display=swap' +
+        '&subset=cyrillic,cyrillic-ext,latin-ext,vietnamese';
+    document.head.appendChild(link);
+}
+
 /** Builds a CSS font-family stack for the family with sensible system fallbacks. */
 export function fontFamilyStack(family: string): string {
     if (!SUPPORTED_FONTS.has(family)) return family;
