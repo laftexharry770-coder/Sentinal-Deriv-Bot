@@ -1,0 +1,7 @@
+node_modules/
+# The built site is committed at the repository root so Pages serves it from
+# main; the build output folder itself stays ignored.
+dist/
+out/
+.env
+*.log

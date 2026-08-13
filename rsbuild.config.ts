@@ -96,7 +96,7 @@ export default defineConfig({
       { from: path.join(__dirname, 'public') },
     ],
   },
-  html: { template: './index.html' },
+  html: { template: './html-template.html' },
   server: {
     compress: true,
   },
