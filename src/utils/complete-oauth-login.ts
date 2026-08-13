@@ -1,14 +1,18 @@
 import { handleOAuthCallback } from '@/external/deriv-core';
 import { isDemoAccount } from './account-helpers';
-import { getRedirectUri } from './redirect-uri';
+import { getOAuthScopes, getRedirectUri } from './redirect-uri';
 
 /**
  * Deriv authenticated the user but reports no account this app may trade.
  * Separate from a failed exchange because nothing about it is retryable.
  */
 export class NoAccountsError extends Error {
-    constructor() {
-        super('Signed in, but Deriv returned no accounts for this app. Nothing can be traded yet.');
+    constructor(reason?: string) {
+        super(
+            reason
+                ? `Signed in, but this account has no Options account and one could not be opened. ${reason}`
+                : 'Signed in, but Deriv returned no accounts for this app. Nothing can be traded yet.'
+        );
         this.name = 'NoAccountsError';
     }
 }
@@ -50,14 +54,24 @@ export async function completeOAuthLogin(
     const authInfo = await handleOAuthCallback(callbackUrl, {
         clientId: process.env.NEXT_PUBLIC_DERIV_APP_ID || '',
         redirectUri,
-        scopes: 'trade',
+        scopes: getOAuthScopes(),
     });
 
     const { DerivWSAccountsService } = await import('@/services/derivws-accounts.service');
-    const accounts = await DerivWSAccountsService.fetchAccountsList(authInfo.access_token);
+    let accounts = await DerivWSAccountsService.fetchAccountsList(authInfo.access_token);
 
+    // A Deriv account is not the same thing as an Options account, and someone
+    // arriving here for the first time may well have the former and not the
+    // latter. Rather than stopping at an empty list, open the demo one Deriv
+    // gives every new trader; the endpoint returns the existing account if
+    // there already is one, so this is safe to attempt.
     if (!accounts || accounts.length === 0) {
-        throw new NoAccountsError();
+        try {
+            const created = await DerivWSAccountsService.createAccount(authInfo.access_token, 'demo');
+            accounts = [created];
+        } catch (error) {
+            throw new NoAccountsError(error instanceof Error ? error.message : undefined);
+        }
     }
 
     DerivWSAccountsService.storeAccounts(accounts);

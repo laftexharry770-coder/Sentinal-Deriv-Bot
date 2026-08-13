@@ -243,6 +243,14 @@ export default class ClientStore {
      */
 
     logout = async () => {
+        // Credentials are cleared whether or not a session finished setting
+        // itself up. The guard used to skip everything when active_loginid was
+        // missing, which is exactly the state a half-completed sign-in leaves
+        // behind — so Log out did nothing and the next person at this browser
+        // resumed the previous one's token.
+        const { clearAllAuthData } = await import('@/external/deriv-core');
+        clearAllAuthData();
+
         if (localStorage.getItem('active_loginid')) {
             // Clear DerivAPI singleton instance and close WebSocket
             const { clearDerivApiInstance } = await import('@/external/bot-skeleton/services/api/appId');

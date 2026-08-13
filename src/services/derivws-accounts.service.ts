@@ -173,6 +173,66 @@ export class DerivWSAccountsService {
     }
 
     /**
+     * Creates an Options trading account for the signed-in user.
+     *
+     * Someone signing in for the first time has a Deriv account but not
+     * necessarily an Options one, and without it the accounts list comes back
+     * empty and there is nothing to trade — a dead end that looks like a broken
+     * app. The endpoint is idempotent: 200 means one already existed and 201
+     * means it was created, and the two differ in shape (an object vs an array
+     * of one), so both are unwrapped here.
+     *
+     * Requires the account_manage OAuth scope. Without it Deriv answers 403,
+     * which the caller reports rather than swallows — it is fixed by adding the
+     * scope to the app, not by retrying.
+     *
+     * @param accessToken Bearer token from OAuth authentication
+     * @param accountType 'demo' for practice money, 'real' for real money
+     */
+    static async createAccount(accessToken: string, accountType: 'demo' | 'real' = 'demo'): Promise<DerivAccount> {
+        const baseURL = this.getDerivWSBaseURL();
+        const optionsDir = brandConfig.platform.derivws.directories.options;
+        const endpoint = `${baseURL}${optionsDir}accounts`;
+
+        const headers: Record<string, string> = {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        };
+        const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
+        if (appId) headers['Deriv-App-ID'] = appId;
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ currency: 'USD', group: 'row', account_type: accountType }),
+        });
+
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            // Deriv's error envelope carries the reason; quoting it beats
+            // guessing, since 403 (missing scope) and 400 (bad parameters) need
+            // different things done about them.
+            const reason =
+                payload?.errors?.[0]?.detail?.message ??
+                payload?.errors?.[0]?.message ??
+                `${response.status} ${response.statusText}`;
+            throw new Error(`Could not create an Options account: ${reason}`);
+        }
+
+        const created: DerivAccount | undefined = Array.isArray(payload?.data) ? payload.data[0] : payload?.data;
+        if (!created?.account_id) {
+            throw new Error('Deriv reported no account after creating one.');
+        }
+
+        // The list this service caches is now stale by exactly one account.
+        this.clearCache();
+        this.clearStoredAccounts();
+
+        return created;
+    }
+
+    /**
      * Fetches OTP and WebSocket URL for a specific account with singleton pattern
      * Prevents duplicate OTP calls for the same account by caching the promise
      * @param accessToken Bearer token from OAuth authentication

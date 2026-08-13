@@ -8,7 +8,7 @@ import {
 } from '@/external/deriv-core';
 import type { AuthConfig } from '@/external/deriv-core';
 import { DerivWSAccountsService } from '@/services/derivws-accounts.service';
-import { getRedirectUri } from '@/utils/redirect-uri';
+import { getOAuthScopes, getRedirectUri } from '@/utils/redirect-uri';
 import brandConfig from '../../../../../brand.config.json';
 
 // =============================================================================
@@ -140,7 +140,7 @@ export const generateOAuthURL = async (prompt?: string): Promise<string> => {
         const config: AuthConfig = {
             clientId,
             redirectUri: getRedirectUri(),
-            scopes: 'trade',
+            scopes: getOAuthScopes(),
         };
 
         // Static referral link (fallback for direct visits without affiliate click)

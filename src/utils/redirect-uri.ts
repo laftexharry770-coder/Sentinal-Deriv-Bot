@@ -22,3 +22,17 @@ export const getRedirectUri = (): string => {
     const basePath = (process.env.PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
     return `${window.location.origin}${basePath}/`;
 };
+
+/**
+ * The OAuth scopes requested at sign-in.
+ *
+ * `trade` alone is enough to trade an account that already exists. Opening an
+ * Options account for a first-time user additionally needs `account_manage`,
+ * which Deriv only grants if the application is registered with it — asking for
+ * a scope the app does not have is refused outright (error=invalid_scope), so
+ * this is a deploy-time setting rather than a hardcoded list.
+ */
+export const getOAuthScopes = (): string => {
+    const configured = process.env.NEXT_PUBLIC_DERIV_OAUTH_SCOPES?.trim();
+    return configured || 'trade';
+};
