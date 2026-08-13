@@ -6,7 +6,6 @@ import { getContractTypeName } from '@/external/bot-skeleton';
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { getSymbolDisplayNameSync } from '@/utils/symbol-display-name';
 import { MarketIcon } from '../market/market-icon';
-import { convertDateFormat } from '../shared';
 import Popover from '../shared_ui/popover';
 import { TradeTypeIcon } from '../trade-type/trade-type-icon';
 import { TColumn, TDesktopTransactionTable, TTableCell } from './transaction-details.types';
@@ -79,14 +78,7 @@ export default function DesktopTransactionTable({
                         return (
                             <div className={`${PARENT_CLASS}__table-row`} key={data?.transaction_ids?.buy}>
                                 <TableCell
-                                    label={
-                                        data?.date_start &&
-                                        convertDateFormat(
-                                            data?.date_start,
-                                            'YYYY-M-D HH:mm:ss [GMT]',
-                                            'YYYY-MM-DD HH:mm:ss [GMT]'
-                                        )
-                                    }
+                                    label={data?.date_start}
                                     extra_classes={[`${PARENT_CLASS}__table-cell--grow-big`]}
                                 />
                                 <TableCell

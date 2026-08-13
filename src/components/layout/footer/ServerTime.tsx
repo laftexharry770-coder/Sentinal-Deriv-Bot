@@ -1,10 +1,18 @@
 import { observer } from 'mobx-react-lite';
 import moment from 'moment';
 import { useStore } from '@/hooks/useStore';
-import { DATE_TIME_FORMAT_WITH_GMT, DATE_TIME_FORMAT_WITH_OFFSET } from '@/utils/time';
+import { formatLocalDateTime, localTimeZoneLabel } from '@/utils/local-time';
 import { Text, Tooltip } from '@deriv-com/ui';
 import { useDevice } from '@deriv-com/ui';
 
+/**
+ * The clock in the footer.
+ *
+ * It still reads Deriv's server time — that is the clock trades are stamped
+ * with — but it shows it on the viewer's own, in twelve-hour form. The tooltip
+ * names the timezone, so a clock that disagrees with someone else's screen has
+ * an explanation attached.
+ */
 const ServerTime = observer(() => {
     const { isDesktop } = useDevice();
     const { common } = useStore() ?? {
@@ -18,9 +26,9 @@ const ServerTime = observer(() => {
             as='div'
             className='app-footer__icon'
             data-testid='dt_server_time'
-            tooltipContent={common.server_time.format(DATE_TIME_FORMAT_WITH_OFFSET)}
+            tooltipContent={localTimeZoneLabel()}
         >
-            <Text size={isDesktop ? 'xs' : 'sm'}>{common.server_time.format(DATE_TIME_FORMAT_WITH_GMT)}</Text>
+            <Text size={isDesktop ? 'xs' : 'sm'}>{formatLocalDateTime(common.server_time)}</Text>
         </Tooltip>
     );
 });

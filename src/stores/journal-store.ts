@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 /* [AI] - Analytics removed - utility functions moved to @/utils/account-helpers */
 import { isVirtualAccount } from '@/utils/account-helpers';
 /* [/AI] */
-import { formatDate } from '@/components/shared';
+import { formatLocalDate, formatLocalTime } from '@/utils/local-time';
 import { run_panel } from '@/constants/run-panel';
 import { LogTypes, MessageTypes } from '@/external/bot-skeleton';
 import { config } from '@/external/bot-skeleton/constants/config';
@@ -262,8 +262,10 @@ export default class JournalStore {
             return;
         }
 
-        const date = formatDate(this.getServerTime());
-        const time = formatDate(this.getServerTime(), 'HH:mm:ss [GMT]');
+        // The journal is read while trading, so it is stamped on the reader's
+        // own clock rather than in UTC.
+        const date = formatLocalDate(this.getServerTime());
+        const time = formatLocalTime(this.getServerTime());
         const unique_id = uuidv4();
 
         this.unfiltered_messages.unshift({ date, time, message, message_type, className, unique_id, extra });
@@ -287,7 +289,7 @@ export default class JournalStore {
                 this.unfiltered_messages[0] = {
                     ...firstMessage,
                     message,
-                    time: formatDate(this.getServerTime(), 'HH:mm:ss [GMT]'),
+                    time: formatLocalTime(this.getServerTime()),
                 };
                 // Force array update
                 this.unfiltered_messages = this.unfiltered_messages.slice();

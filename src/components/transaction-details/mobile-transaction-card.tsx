@@ -6,7 +6,6 @@ import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { getSymbolDisplayNameSync } from '@/utils/symbol-display-name';
 import { localize } from '@deriv-com/translations';
 import { MarketIcon } from '../market/market-icon';
-import { convertDateFormat } from '../shared';
 import Popover from '../shared_ui/popover';
 import { TradeTypeIcon } from '../trade-type/trade-type-icon';
 import { TTransaction } from './transaction-details.types';
@@ -99,11 +98,7 @@ export default function MobileTransactionCards({ transaction }: { transaction: T
             <div className={`${PARENT_CLASS}__card__row`}>
                 <CardColumn
                     title='Timestamp'
-                    label={convertDateFormat(
-                        transaction?.date_start,
-                        'YYYY-M-D HH:mm:ss [GMT]',
-                        'YYYY-MM-DD HH:mm:ss [GMT]'
-                    )}
+                    label={transaction?.date_start}
                 />
                 <CardColumn
                     title='Entry Spot'

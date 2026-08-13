@@ -11,7 +11,6 @@ import { getSymbolDisplayNameSync } from '@/utils/symbol-display-name';
 import { LegacyRadioOffIcon, LegacyRadioOnIcon } from '@deriv/quill-icons';
 import { Localize, localize } from '@deriv-com/translations';
 import { MarketIcon } from '../market/market-icon';
-import { convertDateFormat } from '../shared';
 import Popover from '../shared_ui/popover';
 import { TradeTypeIcon } from '../trade-type/trade-type-icon';
 
@@ -125,7 +124,7 @@ const PopoverContent = ({ contract }: TPopoverContent) => (
         {contract.date_start && (
             <PopoverItem title={localize('Start time')}>
                 <div className='transactions__popover-value'>
-                    {convertDateFormat(contract.date_start, 'YYYY-M-D HH:mm:ss [GMT]', 'YYYY-MM-DD HH:mm:ss [GMT]')}
+                    {contract.date_start}
                 </div>
             </PopoverItem>
         )}
@@ -134,11 +133,7 @@ const PopoverContent = ({ contract }: TPopoverContent) => (
                 <div className='transactions__popover-value'>{contract.entry_spot}</div>
                 {contract.entry_tick_time && (
                     <div className='transactions__popover-value'>
-                        {convertDateFormat(
-                            contract.entry_tick_time,
-                            'YYYY-M-D HH:mm:ss [GMT]',
-                            'YYYY-MM-DD HH:mm:ss [GMT]'
-                        )}
+                        {contract.entry_tick_time}
                     </div>
                 )}
             </PopoverItem>
@@ -147,7 +142,7 @@ const PopoverContent = ({ contract }: TPopoverContent) => (
             <PopoverItem title={localize('Exit spot')}>
                 <div className='transactions__popover-value'>{contract.exit_spot}</div>
                 <div className='transactions__popover-value'>
-                    {convertDateFormat(contract.exit_tick_time, 'YYYY-M-D HH:mm:ss [GMT]', 'YYYY-MM-DD HH:mm:ss [GMT]')}
+                    {contract.exit_tick_time}
                 </div>
             </PopoverItem>
         )) ||

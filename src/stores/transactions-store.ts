@@ -1,6 +1,7 @@
 // @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import { action, computed, makeObservable, observable, reaction } from 'mobx';
-import { formatDate, isEnded } from '@/components/shared';
+import { isEnded } from '@/components/shared';
+import { formatLocalDateTime } from '@/utils/local-time';
 import { LogTypes } from '@/external/bot-skeleton';
 import { ProposalOpenContract } from '@deriv/api-types';
 import { TPortfolioPosition, TStores } from '@deriv/stores/types';
@@ -119,11 +120,13 @@ export default class TransactionsStore {
             ...data,
             is_completed,
             run_id,
-            date_start: formatDate(data.date_start, 'YYYY-M-D HH:mm:ss [GMT]'),
+            // Stored ready to display, on the viewer's clock. The components
+            // that show these print them as they are.
+            date_start: formatLocalDateTime(data.date_start),
             entry_tick: data.entry_spot,
-            entry_tick_time: data.entry_tick_time && formatDate(data.entry_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
+            entry_tick_time: data.entry_tick_time && formatLocalDateTime(data.entry_tick_time),
             exit_tick: (data as any).exit_spot || data.exit_tick,
-            exit_tick_time: data.exit_tick_time && formatDate(data.exit_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
+            exit_tick_time: data.exit_tick_time && formatLocalDateTime(data.exit_tick_time),
             profit: is_completed ? data.profit : 0,
         };
 

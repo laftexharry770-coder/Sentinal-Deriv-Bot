@@ -1,6 +1,7 @@
 import { observer } from 'mobx-react-lite';
 import { useStore } from '@/hooks/useStore';
 import { downloadFile, getSuccessJournalMessage } from '@/utils/download';
+import { formatLocalDateTime } from '@/utils/local-time';
 import { getSymbolDisplayNameSync } from '@/utils/symbol-display-name';
 import { Localize, localize } from '@deriv-com/translations';
 import Button from '../shared_ui/button';
@@ -49,8 +50,10 @@ const Download = observer(({ tab }: TDownloadProps) => {
             const barrier = String(data.barrier || '');
 
             // Start Time - new API uses purchase_time
+            // The export matches what was on screen — the trader's own clock,
+            // not UTC — so a downloaded row can be lined up against the journal.
             const start_time = data.purchase_time
-                ? new Date(data.purchase_time * 1000).toISOString().replace('T', ' ').replace('Z', ' GMT')
+                ? formatLocalDateTime(data.purchase_time)
                 : String(data.date_start || '');
 
             // Entry Spot
@@ -58,7 +61,7 @@ const Download = observer(({ tab }: TDownloadProps) => {
 
             // Entry Spot Time - new API uses entry_spot_time
             const entry_spot_time = data.entry_spot_time
-                ? new Date(data.entry_spot_time * 1000).toISOString().replace('T', ' ').replace('Z', ' GMT')
+                ? formatLocalDateTime(data.entry_spot_time)
                 : String(data.entry_tick_time || '');
 
             // Exit Spot
@@ -66,7 +69,7 @@ const Download = observer(({ tab }: TDownloadProps) => {
 
             // Exit Spot Time - new API might use different field
             const exit_spot_time = data.exit_spot_time
-                ? new Date(data.exit_spot_time * 1000).toISOString().replace('T', ' ').replace('Z', ' GMT')
+                ? formatLocalDateTime(data.exit_spot_time)
                 : String(data.exit_tick_time || '');
 
             // Buy Price
