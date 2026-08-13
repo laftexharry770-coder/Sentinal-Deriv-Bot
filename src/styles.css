@@ -1,0 +1,382 @@
+@import 'tailwindcss';
+@import './fonts-embedded.css';
+
+/* ------------------------------------------------------------------ */
+/* Graphite & Brass — Sentinal Deriv Bot design system                  */
+/* ------------------------------------------------------------------ */
+
+@theme {
+  /* A step below Tailwind's smallest default, for phones at 360-412px. */
+  --breakpoint-xs: 24rem;
+
+  --font-sans: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --color-base: #0a0b0d;
+  --color-surface: #141519;
+  --color-surface-2: #1a1c21;
+  --color-surface-3: #23262c;
+  --color-line: #2a2d34;
+  --color-line-soft: #21242a66;
+
+  --color-ink: #ecedf0;
+  --color-ink-dim: #abaeb6;
+  --color-ink-muted: #74787f;
+
+  /*
+   * Brass. The instrument is gold, so the terminal's own accent is drawn from
+   * it — warm enough to give the greys a temperature, dim enough that the
+   * signal colours still read louder than the furniture.
+   */
+  --color-brass: #c08b3c;
+  --color-brass-bright: #e0ac57;
+  --color-brass-deep: #7d5921;
+
+  /*
+   * The accent is graphite rather than a hue. Colour is reserved for meaning
+   * here — green for profit, red for loss, gold for the instrument — so an
+   * accent that carries none stays out of their way.
+   */
+  --color-accent: #5c646f;
+  --color-accent-bright: #9aa2ad;
+  --color-accent-deep: #3c424b;
+
+  --color-profit: #22d3a5;
+  --color-loss: #ff5c7a;
+  --color-gold: #f5b93b;
+  --color-warn: #fbbf24;
+
+  --radius-card: 14px;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  /*
+   * min-height, not height: a page taller than the viewport must be able to
+   * grow and scroll. A fixed height here clipped the sign-in form on a phone,
+   * where the browser chrome leaves less room than 100vh claims.
+   */
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    background:
+      radial-gradient(1150px 640px at 84% -12%, rgba(224, 172, 87, 0.085), transparent 62%),
+      radial-gradient(880px 600px at 2% 6%, rgba(132, 148, 170, 0.075), transparent 58%),
+      radial-gradient(1000px 520px at 48% 114%, rgba(192, 139, 60, 0.06), transparent 68%),
+      /* A vignette keeps the eye in the middle of the screen. */
+      radial-gradient(140% 120% at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.55) 100%),
+      var(--color-base);
+    background-attachment: fixed;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+    /* iOS keeps text from inflating in landscape without disabling zoom. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /*
+   * A single stop of grain over the whole page. Large flat darks band on OLED
+   * phones and read as unfinished; a little noise breaks the gradient up and
+   * is what stops the surface looking printed rather than lit.
+   */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Headings tighten as they grow, the way set type does. */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.011em;
+  }
+
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2e343d;
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3d444f;
+  }
+
+  input,
+  select,
+  button {
+    font-family: inherit;
+  }
+
+  /* Numeric fields read as a terminal, not as prose. */
+  .tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /*
+   * Panels are lit from above: a hairline highlight along the top edge, a
+   * shadow that falls away below. It is what separates a surface sitting on
+   * the page from a rectangle drawn on it.
+   */
+  .card {
+    position: relative;
+    background: linear-gradient(162deg, rgba(25, 29, 35, 0.95), rgba(16, 19, 23, 0.96));
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 236, 205, 0.06),
+      0 1px 2px -1px rgba(0, 0, 0, 0.9),
+      0 22px 48px -32px rgba(0, 0, 0, 0.95);
+  }
+
+  .card-flush {
+    background: rgba(17, 20, 25, 0.7);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.028);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 10px;
+    padding: 0.55rem 0.95rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border: 1px solid var(--color-line);
+    color: var(--color-ink);
+    background: var(--color-surface-2);
+    transition:
+      background 140ms ease,
+      border-color 140ms ease,
+      transform 90ms ease,
+      box-shadow 140ms ease,
+      opacity 140ms ease;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:focus-visible,
+  .field:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-base), 0 0 0 4px rgba(224, 172, 87, 0.75);
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--color-surface-3);
+    border-color: #39404a;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: linear-gradient(180deg, var(--color-brass), var(--color-brass-deep));
+    border-color: #cf9a4d;
+    color: #171104;
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 236, 205, 0.32),
+      0 10px 28px -16px rgba(192, 139, 60, 0.55);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, var(--color-brass-bright), #916827);
+    border-color: #e6b769;
+  }
+
+  .btn-buy {
+    background: linear-gradient(180deg, #1fbf95, #10906f);
+    border-color: #1fbf95;
+    color: #04140f;
+  }
+  .btn-sell {
+    background: linear-gradient(180deg, #ff6b86, #d93a5b);
+    border-color: #ff6b86;
+    color: #1a0409;
+  }
+  .btn-ghost {
+    background: transparent;
+  }
+
+  .field {
+    width: 100%;
+    background: #0d1014;
+    border: 1px solid var(--color-line);
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    /* 16px stops iOS zooming the page when a field takes focus. */
+    font-size: 16px;
+    color: var(--color-ink);
+    outline: none;
+    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.55);
+    transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  }
+  @media (min-width: 640px) {
+    .field {
+      font-size: 0.875rem;
+    }
+  }
+  .field:hover:not(:focus) {
+    border-color: #343b45;
+  }
+  .field:focus {
+    border-color: #8a6f42;
+    background: #0f1116;
+    box-shadow:
+      inset 0 1px 2px 0 rgba(0, 0, 0, 0.5),
+      0 0 0 3px rgba(192, 139, 60, 0.16);
+  }
+  .field::placeholder {
+    color: #575d66;
+  }
+
+  .label {
+    display: block;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    margin-bottom: 0.4rem;
+  }
+
+  /* The chart panel is the instrument; it gets a deeper well than a card. */
+  .chart-well {
+    position: relative;
+    border-radius: 12px;
+    background:
+      radial-gradient(130% 90% at 50% 108%, rgba(192, 139, 60, 0.07), transparent 62%),
+      radial-gradient(120% 80% at 50% 0%, rgba(150, 165, 190, 0.05), transparent 70%),
+      #090a0d;
+    box-shadow:
+      inset 0 0 0 1px rgba(42, 45, 52, 0.9),
+      inset 0 22px 44px -34px rgba(224, 172, 87, 0.4);
+  }
+
+  /* The header carries a hairline of brass, like a rule under a masthead. */
+  .brass-rule {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgba(192, 139, 60, 0.5) 18%,
+      rgba(192, 139, 60, 0.22) 52%,
+      transparent
+    );
+  }
+
+  /*
+   * The terminal is an app shell: one fixed-height frame with one scrolling
+   * pane inside it. dvh follows the browser chrome as it hides and shows,
+   * which vh does not — that mismatch is what put the bottom tab bar over the
+   * content and left the last card unreachable.
+   */
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-scroll {
+    overflow-y: auto;
+    /* A scroll that reaches its end stops there rather than dragging the page
+       behind it, which on a phone reads as the screen coming loose. */
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(rgba(39, 44, 52, 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(39, 44, 52, 0.5) 1px, transparent 1px);
+    background-size: 48px 40px;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 165, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(34, 211, 165, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 165, 0);
+  }
+}
+
+.live-dot {
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes flash-up {
+  from {
+    background-color: rgba(34, 211, 165, 0.22);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes flash-down {
+  from {
+    background-color: rgba(255, 92, 122, 0.22);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.flash-up {
+  animation: flash-up 550ms ease-out;
+}
+.flash-down {
+  animation: flash-down 550ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .flash-up,
+  .flash-down {
+    animation: none;
+  }
+}
