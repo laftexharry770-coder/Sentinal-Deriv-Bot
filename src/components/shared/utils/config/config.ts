@@ -103,9 +103,14 @@ export const generateOAuthURL = async (prompt?: string): Promise<string> => {
         const clientId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
         if (!clientId) return '';
 
+        // The app is served from a subpath on a project site, and origin drops
+        // it — Deriv then sees a redirect_uri that does not match the one
+        // registered against the application and answers invalid_request. The
+        // base path the router and the assets already use makes it exact.
+        const basePath = (process.env.PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
         const config: AuthConfig = {
             clientId,
-            redirectUri: window.location.origin,
+            redirectUri: `${window.location.origin}${basePath}/`,
             scopes: 'trade',
         };
 
