@@ -1,0 +1,63 @@
+name: Publish bot
+
+# The bot is an rsbuild single-page app, so Pages serves a built bundle rather
+# than the source. Publishing to gh-pages keeps 47 MB of build output off the
+# branch people actually read.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-bot
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build
+        env:
+          # A project site lives under /<repo>/; without this every asset 404s.
+          PUBLIC_BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - name: Prepare the site
+        run: |
+          set -euo pipefail
+          # React Router owns the routes, so any deep link has to be served the
+          # app rather than a 404 from the host.
+          cp dist/index.html dist/404.html
+          # Without this, Pages runs the output through Jekyll and drops the
+          # _-prefixed files a bundler emits.
+          touch dist/.nojekyll
+
+      - name: Publish to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd dist
+          git init -q
+          git checkout -qb gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Bot build from ${GITHUB_SHA}"
+          git push -q --force \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            gh-pages

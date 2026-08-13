@@ -9,6 +9,11 @@ loadEnv({ mode: 'production' });
 
 const isStaticBuild = process.env.NEXT_PUBLIC_APP_BUILD === 'true';
 
+// GitHub Pages serves a project site from /<repo>/, not from the domain root,
+// so every asset URL needs that prefix or the page loads and finds nothing.
+// Empty for a root deploy, which is the default everywhere else.
+const basePath = process.env.PUBLIC_BASE_PATH ?? '';
+
 // Resolve smartcharts from wherever the package actually lives so the asset
 // copy works both standalone and inside the monorepo (npm workspaces hoist the
 // package to the repo root, so a cwd-relative './node_modules/...' glob fails).
@@ -65,7 +70,7 @@ export default defineConfig({
     },
   },
   output: {
-    assetPrefix: isStaticBuild ? '/bot/preview/' : '/',
+    assetPrefix: isStaticBuild ? '/bot/preview/' : basePath || '/',
     distPath: {
       root: isStaticBuild ? 'out/preview' : 'dist',
     },
