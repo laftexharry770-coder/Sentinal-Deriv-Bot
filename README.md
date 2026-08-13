@@ -1,72 +1,119 @@
-# Sentinal Deriv Bot
+# Deriv Trading Bot
 
-A digit-contract desk for Deriv's synthetic indices. It streams the volatility
-indices, measures what the tape actually did, and prices each contract against
-what Deriv pays — matches, differs, even, odd, over, under.
+A self-hosted, visual trading-bot builder on the Deriv WebSocket API. Drag-and-drop
+strategy building with Blockly, an interactive SmartCharts chart, automated strategy
+execution, and dashboard/tutorials.
 
-It runs entirely in the browser. There is no server, and the access token never
-leaves the tab it is typed into.
+> **Note:** Unlike the other templates in this repo (Rise/Fall, Accumulators, Digits)
+> which are **Next.js** apps, the bot is a **[Rsbuild](https://rsbuild.dev) + React
+> Router** single-page app. The commands, build output, and environment variables
+> below differ accordingly.
 
+## Prerequisites
+
+- Node.js 18.18 or later
+
+## Step 1: Register Your App ID
+
+1. Log in to your Deriv account and go to the [API Token page](https://app.deriv.com/account/api-token) to create a token with the required scopes.
+2. Navigate to [App Registration](https://developers.deriv.com/dashboard/) and register a new application.
+3. Set the **Redirect URI** to the URL where you will host this app (e.g. `http://localhost:4003` for local development).
+4. Copy the **App ID** shown after registration — you will need it in the next step.
+
+## Step 2: Configure `.env`
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
 ```
-src/deriv/     Deriv Options API client — REST session exchange, WebSocket, contracts
-src/digits.ts  The digit maths: distribution, parity, chi-squared, payout arithmetic
-src/screens/   The gate and the desk
-src/components/ Design system and the app shell
+
+```env
+# Required: Deriv app id — drives OAuth login/sign-up and WebSocket connections.
+NEXT_PUBLIC_DERIV_APP_ID=your_app_id_here
+
+# Optional: environment + affiliate attribution.
+NEXT_PUBLIC_DERIV_ENV=production
+NEXT_PUBLIC_DERIV_REFERRAL_LINK=your_referral_link_here
+
+# Optional: Google Drive integration (leave blank to disable).
+GD_CLIENT_ID=
+GD_APP_ID=
+GD_API_KEY=
 ```
 
-## What it does not do
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_DERIV_APP_ID` | Deriv app id issued for your registered app. Drives OAuth login/sign-up and WebSocket connections. Without it, Log in / Sign up stay disabled. |
+| `NEXT_PUBLIC_DERIV_ENV` | `production` for live Deriv endpoints; `preview` (or `staging`) for staging. Read by both the bot's URL resolver and `@deriv/core` for OAuth. |
+| `NEXT_PUBLIC_DERIV_REFERRAL_LINK` | Affiliate referral link — appended as `affiliate_token` / `utm_campaign` on OAuth (optional). |
+| `GD_CLIENT_ID` / `GD_APP_ID` / `GD_API_KEY` | Google Drive integration credentials for saving/loading strategies (optional). |
 
-Deriv's volatility indices are produced by a random number generator, audited
-and published as such. Every tick's last digit is an independent draw from 0–9.
+> These variables are injected at **build time** via Rsbuild's `source.define`
+> (see `rsbuild.config.ts`), so re-build after changing them.
 
-Nothing in a past sequence carries information about the next one. A digit that
-has come up nine times in a hundred, or an eight-long run of evens, is a fact
-about the window you are looking at and no more. So this desk **measures and
-never forecasts**, and there is no signal, alert or entry recommendation
-anywhere in it — building one would mean inventing information the series
-cannot contain.
+## Branding (`brand.config.json`)
 
-What can be told honestly is the price, and that is what the ticket shows:
+The App Builder also writes branding into `brand.config.json`. Relevant `platform` keys:
 
-| | Chance | Deriv pays | Break-even | Expected return |
-| --- | --- | --- | --- | --- |
-| Even / Odd | 50% | 1.95× | 2.00× | **−2.5%** |
-| Matches | 10% | 9.00× | 10.00× | **−10.0%** |
-| Over 5 | 40% | — | 2.50× | asked per ticket |
+| Key | Description |
+|---|---|
+| `platform.name` | In-app display name (header, tab title, favicon). Set in App Builder Customise. Overridden by `NEXT_PUBLIC_DERIV_APP_NAME` when that env var is set. |
+| `platform.show_name` | `true` (default) shows the name next to the logo on desktop; `false` hides it |
 
-Every contract carries a negative expected return. That is the house margin,
-it is not moved by entry timing, and the desk states it beside the buy button
-rather than in a footnote.
+Tab title and favicon use `NEXT_PUBLIC_DERIV_APP_NAME` when set, otherwise `platform.name` (with a generic fallback), and are not blanked when `show_name` is false. OAuth/consent registration name is separate and is not written into these fields by App Builder.
 
-## Signing in
-
-Deriv's current scheme exchanges an access token for an authenticated socket:
-
-1. `POST /trading/v1/options/accounts/{accountId}/otp` with
-   `Authorization: Bearer <token>` and a `Deriv-App-ID` header.
-2. Deriv replies with a WebSocket URL that is already authenticated — the OTP
-   is valid for two minutes and single use.
-3. The socket carries market data and contracts; nothing is authorised over it.
-
-You need an access token with the **Trade** scope, the app id it was issued
-under, and the Options account id. Account ids name their own kind: `DOT…` is
-demo, `ROT…` is real, and the desk says which it is reading before you connect.
-
-## Development
+## Step 3: Local Development
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
-npm test             # the digit maths
-npm run typecheck
+npm run dev
 ```
 
-## Publishing
+The app is available at `http://localhost:4003`. (`npm install` and `npm run dev`
+also regenerate brand CSS — see Branding below.)
+
+## Step 4: Build for Production
 
 ```bash
-npm run build:standalone   # one self-contained page in dist-standalone/
-npm run publish:local      # the same page, into the repository root for Pages
+npm run build
 ```
 
-The standalone build inlines every asset, so the result is a single HTML file
-that runs from a file:// path, a static host or a phone home screen.
+This produces a static build in the `dist/` directory (Rsbuild output — there is no
+`.next`/`out`). Serve the contents of `dist/` from any web server or static host.
+SmartCharts engine assets are copied into `dist/js/smartcharts/` during the build.
+
+## Google Drive integration (optional)
+
+Saving/loading strategies to Google Drive stays disabled unless `GD_CLIENT_ID`,
+`GD_APP_ID`, and `GD_API_KEY` are all set. **If it's not set up in your host
+environment yet:**
+
+1. **Get the credentials** — follow Google's [Picker set-up guide](https://developers.google.com/workspace/drive/picker/guides/web-picker#set-up-environment):
+   enable the **Google Picker API** + **Drive API**, then create an **OAuth 2.0
+   Client ID** (Web application) and an **API key**. Use the project number as `GD_APP_ID`.
+2. **Authorize your domain** — add your deployed URL (e.g. `https://your-app.vercel.app`)
+   to the OAuth client's **Authorized JavaScript origins** (exact origin; no wildcards).
+3. **Set them in your host env — not in source** — add the three vars to your host
+   (Vercel → Settings → Environment Variables; Heroku → Settings → Config Vars).
+   Don't commit them to the repo.
+4. **Rebuild** — they're baked in at build time (`source.define`), so trigger a new build/deploy.
+
+> Deploying via Deriv App Builder? Open your app in **Edit** mode and enter these
+> three values — App Builder injects them into your host environment for you
+> (never into the app source).
+
+## Branding & White-labeling
+
+Branding (logo, primary color, fonts, app name) is driven by **`brand.config.json`**,
+not Next.js config:
+
+- **Colors / fonts / app name** — edit `brand.config.json`, then run
+  `npm run generate:brand-css` to bake the values into the theme CSS variables. This
+  runs automatically on `npm install`, `npm run dev`, and `npm run build`.
+- **Logo** — drop a `public/logo.<png|jpg|jpeg|webp>` to set the header logo; it is also
+  used as the favicon. Without it, a letter badge (the app name's first letter) is shown.
+- **Theme** — a light/dark toggle lives in the header; the chart re-themes with it.
+
+When assembled by the App Builder, these are configured for you (logo upload, color,
+font, and app name are injected at deploy time).
