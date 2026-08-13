@@ -71,18 +71,46 @@ const getDefaultServerURL = () => {
  * @returns Promise with WebSocket URL or fallback to default server
  */
 export const getSocketURL = async (): Promise<string> => {
-    try {
-        const authInfo = getAuthInfo();
-        if (!authInfo || !authInfo.access_token) {
-            return getDefaultServerURL();
-        }
+    const authInfo = getAuthInfo();
 
-        const wsUrl = await DerivWSAccountsService.getAuthenticatedWebSocketURL(authInfo.access_token);
-        return wsUrl;
-    } catch (error) {
-        console.error('[DerivWS] Error in getSocketURL:', error);
+    // Genuinely signed out: the public channel is the right answer.
+    if (!authInfo || !authInfo.access_token) {
         return getDefaultServerURL();
     }
+
+    // Signed in, so the public channel is never the right answer. It carries
+    // market data only -- account-scoped reads like the balance are not
+    // available on it at all, by design. Falling back to it on a transient OTP
+    // failure produced a session that looked connected and simply never showed
+    // a balance, until something else forced a reconnect.
+    //
+    // The OTP is short-lived and single-use, so a failure here is usually
+    // timing rather than a refusal. A few quick attempts cost less than the
+    // silence did.
+    const attempts = 3;
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+            return await DerivWSAccountsService.getAuthenticatedWebSocketURL(authInfo.access_token);
+        } catch (error) {
+            lastError = error;
+            if (attempt < attempts - 1) {
+                await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+            }
+        }
+    }
+
+    // Out of attempts. The public channel still cannot serve a balance, but a
+    // charting session beats a dead page -- and this says so rather than
+    // leaving the empty balance to be puzzled over.
+    console.error(
+        '[DerivWS] Could not open an authenticated socket after %d attempts; falling back to the public ' +
+            'channel, which cannot report a balance or place trades.',
+        attempts,
+        lastError
+    );
+    return getDefaultServerURL();
 };
 
 export const getDebugServiceWorker = () => {
