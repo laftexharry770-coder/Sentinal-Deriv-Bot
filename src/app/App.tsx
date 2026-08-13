@@ -27,9 +27,15 @@ const LanguageHandler = ({ children }: { children: React.ReactNode }) => {
 };
 
 // The static preview build is served under /bot/preview (see rsbuild.config.ts
-// assetPrefix), so React Router must resolve routes under that prefix. Standalone
-// partner deploys are served at the root, so no basename there.
-const routerBasename = isPreviewMode() ? PREVIEW_BASE_PATH : undefined;
+// assetPrefix), so React Router must resolve routes under that prefix.
+//
+// A project site on GitHub Pages is served from /<repo>/ for the same reason,
+// and PUBLIC_BASE_PATH carries it. Without this the router resolves every route
+// against the domain root, matches none of them, and renders its own 404 over a
+// bundle that loaded perfectly well. Root deploys leave it empty and get no
+// basename, which is what react-router wants.
+const publicBasePath = (process.env.PUBLIC_BASE_PATH ?? '').replace(/\/+$/, '');
+const routerBasename = isPreviewMode() ? PREVIEW_BASE_PATH : publicBasePath || undefined;
 
 const router = createBrowserRouter(
     createRoutesFromElements(
