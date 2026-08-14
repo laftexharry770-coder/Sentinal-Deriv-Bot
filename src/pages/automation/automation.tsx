@@ -11,6 +11,8 @@ import {
     type ContractCategory,
     type ContractTemplate,
 } from '@/services/automation.service';
+import { getAuthInfo } from '@/external/deriv-core';
+import { DerivWSAccountsService } from '@/services/derivws-accounts.service';
 import { isDemoAccount } from '@/utils/account-helpers';
 import { formatLocalDateTime, formatLocalTime } from '@/utils/local-time';
 import { Localize, localize } from '@deriv-com/translations';
@@ -55,6 +57,8 @@ const Automation = observer(() => {
     const [multiplier, setMultiplier] = useState('100');
     const [parameters, setParameters] = useState<Record<string, string>>({});
     const [confirmingReal, setConfirmingReal] = useState(false);
+    const [resetting, setResetting] = useState(false);
+    const [resetNote, setResetNote] = useState<string | null>(null);
 
     const currency = client?.currency || 'USD';
     const loginid = client?.loginid || '';
@@ -163,6 +167,28 @@ const Automation = observer(() => {
         return built;
     };
 
+    /**
+     * Puts the practice balance back to Deriv's starting amount.
+     *
+     * Testing a strategy is the quickest way to empty a demo account, and
+     * without this the only way back is Deriv's own site. Demo only — the
+     * button does not exist on a real account, where there is nothing to reset.
+     */
+    const handleResetDemoBalance = async () => {
+        setResetting(true);
+        setResetNote(null);
+        try {
+            const authInfo = getAuthInfo();
+            if (!authInfo?.access_token) throw new Error(localize('Not signed in.'));
+            await DerivWSAccountsService.resetDemoBalance(authInfo.access_token, loginid);
+            setResetNote(localize('Demo balance reset.'));
+        } catch (caught) {
+            setResetNote(caught instanceof Error ? caught.message : String(caught));
+        } finally {
+            setResetting(false);
+        }
+    };
+
     const handleStart = async () => {
         // A real account stakes real money on every purchase this makes, and
         // the run continues after the tab is closed. One deliberate second
@@ -206,6 +232,18 @@ const Automation = observer(() => {
                     )}
                     {loginid ? ` · ${loginid}` : ''}
                 </span>
+                {isDemo && loginid && (
+                    <div className='automation__reset'>
+                        <button type='button' disabled={resetting} onClick={() => void handleResetDemoBalance()}>
+                            {resetting ? (
+                                <Localize i18n_default_text='Resetting…' />
+                            ) : (
+                                <Localize i18n_default_text='Reset demo balance' />
+                            )}
+                        </button>
+                        {resetNote && <span className='automation__hint'>{resetNote}</span>}
+                    </div>
+                )}
             </header>
 
             {error && (

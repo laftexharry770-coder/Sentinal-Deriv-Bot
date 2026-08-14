@@ -61,9 +61,11 @@ afterEach(() => setAutomationTransport(null));
 
 describe('starting a run', () => {
     it('sends the template, the strategy and its parameters, and subscribes', async () => {
-        const stub = stubTransport({ auto_start: { auto_start: RUN, msg_type: 'auto_start' } });
+        const stub = stubTransport({
+            auto_start: { auto_start: RUN, msg_type: 'auto_start', subscription: { id: 'sub-1' } },
+        });
 
-        const run = await AutomationService.start({
+        const { run, subscriptionId } = await AutomationService.start({
             contract_template: RUN.contract_template,
             strategy_id: 'martingale',
             strategy_parameters: { multiplier: 2 },
@@ -78,6 +80,9 @@ describe('starting a run', () => {
             subscribe: 1,
         });
         expect(run.run_id).toBe(RUN.run_id);
+        // Kept so the stream can be released later; dropping it leaks a
+        // subscription for the life of the connection.
+        expect(subscriptionId).toBe('sub-1');
     });
 
     it('omits subscribe when it was not asked for', async () => {
@@ -105,6 +110,25 @@ describe('controlling a run', () => {
 
         expect(stub.sent[0]).toEqual({ [message]: 1, run_id: RUN.run_id });
         expect(run.status).toBe(status);
+    });
+});
+
+describe('releasing streams', () => {
+    it('forgets a subscription by id', async () => {
+        const stub = stubTransport({ forget: { forget: 1, msg_type: 'forget' } });
+        await AutomationService.forget('sub-1');
+        expect(stub.sent[0]).toEqual({ forget: 'sub-1' });
+    });
+
+    it('does not make a failed cleanup the caller´s problem', async () => {
+        setAutomationTransport({
+            send: async () => {
+                throw new Error('socket closed');
+            },
+            onMessage: () => () => undefined,
+        });
+        // Navigating away from a dead connection is not an error worth raising.
+        await expect(AutomationService.forget('sub-1')).resolves.toBeUndefined();
     });
 });
 

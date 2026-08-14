@@ -44,6 +44,32 @@
         }
     }
 
+    &__reset {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin-top: 0.8rem;
+
+        button {
+            padding: 0.4rem 1rem;
+            font-size: 1.2rem;
+            border: 1px solid var(--border-normal);
+            border-radius: 0.4rem;
+            background: var(--general-main-1);
+            color: var(--text-general);
+            cursor: pointer;
+
+            &:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
+        }
+
+        .automation__hint {
+            margin-top: 0;
+        }
+    }
+
     &__panel {
         background: var(--general-section-1);
         border: 1px solid var(--border-normal);

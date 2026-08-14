@@ -138,6 +138,35 @@ const unwrap = <T>(response: unknown, key: string): T => {
     return payload as T;
 };
 
+/**
+ * The subscription id that came back with a streaming response, if any.
+ *
+ * Deriv returns it as `subscription.id`, and it is the only way to call
+ * `forget` later. Dropping it leaks a stream on the server for the life of the
+ * connection, which their own guidance says to release.
+ */
+const subscriptionIdOf = (response: unknown): string | null => {
+    const subscription = (response as Record<string, unknown> | null)?.subscription as
+        | { id?: string }
+        | undefined;
+    return subscription?.id ?? null;
+};
+
+const requestWithSubscription = async <T>(
+    payload: Record<string, unknown>,
+    key: string
+): Promise<{ payload: T; subscriptionId: string | null }> => {
+    try {
+        const response = await transport().send<Record<string, unknown>>(payload);
+        return { payload: unwrap<T>(response, key), subscriptionId: subscriptionIdOf(response) };
+    } catch (caught) {
+        const body = caught as Record<string, unknown> | null;
+        const error = body?.error as { message?: string; code?: string } | undefined;
+        if (error) throw new Error(error.message || error.code || 'Deriv refused the request.');
+        throw caught instanceof Error ? caught : new Error(String(caught));
+    }
+};
+
 const request = async <T>(payload: Record<string, unknown>, key: string): Promise<T> => {
     try {
         const response = await transport().send<Record<string, unknown>>(payload);
@@ -159,6 +188,12 @@ export interface StartRunInput {
     strategy_parameters: Record<string, unknown>;
     /** Stream run updates until the run ends or the subscription is forgotten. */
     subscribe?: boolean;
+}
+
+/** A run together with the stream that is following it, if one was opened. */
+export interface StartedRun {
+    run: AutoRun;
+    subscriptionId: string | null;
 }
 
 export interface ActiveSymbol {
@@ -214,9 +249,19 @@ export const AutomationService = {
         return result.runs ?? [];
     },
 
-    /** Begins a run. Contracts start being bought immediately. */
-    async start({ contract_template, strategy_id, strategy_parameters, subscribe }: StartRunInput): Promise<AutoRun> {
-        return request<AutoRun>(
+    /**
+     * Begins a run. Contracts start being bought immediately.
+     *
+     * Returns the subscription id along with the run so the stream can be
+     * released with forget() when it is no longer wanted.
+     */
+    async start({
+        contract_template,
+        strategy_id,
+        strategy_parameters,
+        subscribe,
+    }: StartRunInput): Promise<StartedRun> {
+        const { payload, subscriptionId } = await requestWithSubscription<AutoRun>(
             {
                 auto_start: 1,
                 contract_template,
@@ -226,11 +271,16 @@ export const AutomationService = {
             },
             'auto_start'
         );
+        return { run: payload, subscriptionId };
     },
 
     /** Reads one run — used to re-attach after a reload. */
-    async get(run_id: string, subscribe = false): Promise<AutoRun> {
-        return request<AutoRun>({ auto_get: 1, run_id, ...(subscribe ? { subscribe: 1 } : {}) }, 'auto_get');
+    async get(run_id: string, subscribe = false): Promise<StartedRun> {
+        const { payload, subscriptionId } = await requestWithSubscription<AutoRun>(
+            { auto_get: 1, run_id, ...(subscribe ? { subscribe: 1 } : {}) },
+            'auto_get'
+        );
+        return { run: payload, subscriptionId };
     },
 
     /** Stops buying until resumed. Open contracts are unaffected. */
@@ -247,9 +297,19 @@ export const AutomationService = {
         return request<AutoRun>({ auto_stop: 1, run_id }, 'auto_stop');
     },
 
-    /** Drops a stream. The run itself carries on — use stop() for that. */
+    /**
+     * Drops a stream. The run itself carries on — use stop() for that.
+     *
+     * Never throws: releasing a stream is cleanup, and a connection that has
+     * already gone is not a problem worth surfacing to someone who is simply
+     * navigating away.
+     */
     async forget(subscription_id: string): Promise<void> {
-        await transport().send({ forget: subscription_id });
+        try {
+            await transport().send({ forget: subscription_id });
+        } catch {
+            // The socket is gone, which forgets it just as thoroughly.
+        }
     },
 
     /**

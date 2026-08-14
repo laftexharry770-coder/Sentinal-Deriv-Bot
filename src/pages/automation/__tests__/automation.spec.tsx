@@ -44,6 +44,18 @@ jest.mock('@/hooks/useStore', () => ({
     useStore: () => ({ client: { loginid, currency: 'USD' } }),
 }));
 
+jest.mock('@/external/deriv-core', () => ({
+    ...jest.requireActual('@/external/deriv-core'),
+    getAuthInfo: () => ({ access_token: 'access-token' }),
+}));
+
+// The reset endpoint is REST, not the socket the rest of this talks to.
+const restCalls: Array<{ url: string; method: string }> = [];
+global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+    restCalls.push({ url: String(url), method: init?.method ?? 'GET' });
+    return { ok: true, status: 200, json: async () => ({}) };
+}) as unknown as typeof fetch;
+
 const sent: Array<Record<string, unknown>> = [];
 
 const transport: AutomationTransport = {
@@ -55,7 +67,9 @@ const transport: AutomationTransport = {
             auto_list: { auto_list: { runs: [] } },
             active_symbols: { active_symbols: [SYMBOL] },
             contracts_list: { contracts_list: [{ contract_category: 'callput', contract_types: ['CALL', 'PUT'], display_name: 'Up/Down' }] },
-            auto_start: { auto_start: RUN },
+            auto_start: { auto_start: RUN, subscription: { id: 'sub-1' } },
+            auto_stop: { auto_stop: { ...RUN, status: 'stopped', stop_reason: 'user_stopped', stop_time: 1717488600 } },
+            forget: { forget: 1 },
         };
         return answers[key] as T;
     },
@@ -64,6 +78,7 @@ const transport: AutomationTransport = {
 
 beforeEach(() => {
     sent.length = 0;
+    restCalls.length = 0;
     isAuthorized = true;
     loginid = 'DOT12345678';
     localStorage.clear();
@@ -134,6 +149,62 @@ describe('the automation panel', () => {
         expect(screen.getByRole('button', { name: /Pause/i })).toBeInTheDocument();
         // Closing the tab is not a way to stop it, and the panel says so.
         expect(screen.getByText(/Stopping ends the run/i)).toBeInTheDocument();
+    });
+
+    it('releases the stream when the run is stopped', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<Automation />);
+        await screen.findByText('Martingale');
+
+        await user.click(screen.getByRole('button', { name: /Start run/i }));
+        await screen.findByRole('button', { name: /^Stop$/i });
+        await user.click(screen.getByRole('button', { name: /^Stop$/i }));
+
+        // Deriv keeps pushing to a stream until it is forgotten; a stopped run
+        // will never send anything again.
+        await waitFor(() => expect(sent.some(request => request.forget === 'sub-1')).toBe(true));
+        unmount();
+    });
+
+    it('releases the stream when the screen goes away', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<Automation />);
+        await screen.findByText('Martingale');
+
+        await user.click(screen.getByRole('button', { name: /Start run/i }));
+        await screen.findByRole('button', { name: /^Stop$/i });
+
+        unmount();
+
+        await waitFor(() => expect(sent.some(request => request.forget === 'sub-1')).toBe(true));
+        // Leaving the screen must not stop the run itself.
+        expect(sent.some(request => 'auto_stop' in request)).toBe(false);
+    });
+
+    it('offers to top the practice balance back up, on demo only', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<Automation />);
+        await screen.findByText('Martingale');
+
+        await user.click(screen.getByRole('button', { name: /Reset demo balance/i }));
+
+        await waitFor(() =>
+            expect(
+                restCalls.some(call => call.method === 'POST' && call.url.includes('/reset-demo-balance'))
+            ).toBe(true)
+        );
+        expect(await screen.findByText(/Demo balance reset/i)).toBeInTheDocument();
+        unmount();
+    });
+
+    it('does not offer a balance reset on a real account', async () => {
+        // Real balances cannot be reset, and offering it would suggest the
+        // money on this account is not real.
+        loginid = 'ROT12345678';
+        render(<Automation />);
+        await screen.findByText('Martingale');
+
+        expect(screen.queryByRole('button', { name: /Reset demo balance/i })).not.toBeInTheDocument();
     });
 
     it('remembers the run so a reload can still stop it', async () => {

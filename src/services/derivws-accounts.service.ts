@@ -233,6 +233,36 @@ export class DerivWSAccountsService {
     }
 
     /**
+     * Puts a demo account's balance back to Deriv's starting amount.
+     *
+     * Testing a strategy is the fastest way to empty a practice account, and
+     * without this the only way back is Deriv's own site. Demo accounts only —
+     * Deriv refuses anything else, and so does the caller before asking.
+     *
+     * Answers 200 with no body, so there is nothing to return.
+     */
+    static async resetDemoBalance(accessToken: string, accountId: string): Promise<void> {
+        const baseURL = this.getDerivWSBaseURL();
+        const optionsDir = brandConfig.platform.derivws.directories.options;
+        const endpoint = `${baseURL}${optionsDir}accounts/${accountId}/reset-demo-balance`;
+
+        const headers: Record<string, string> = { Authorization: `Bearer ${accessToken}` };
+        const appId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
+        if (appId) headers['Deriv-App-ID'] = appId;
+
+        const response = await fetch(endpoint, { method: 'POST', headers });
+
+        if (!response.ok) {
+            const payload = await response.json().catch(() => null);
+            const reason =
+                payload?.errors?.[0]?.message ??
+                payload?.errors?.[0]?.detail?.message ??
+                `${response.status} ${response.statusText}`;
+            throw new Error(`Could not reset the demo balance: ${reason}`);
+        }
+    }
+
+    /**
      * Fetches OTP and WebSocket URL for a specific account with singleton pattern
      * Prevents duplicate OTP calls for the same account by caching the promise
      * @param accessToken Bearer token from OAuth authentication

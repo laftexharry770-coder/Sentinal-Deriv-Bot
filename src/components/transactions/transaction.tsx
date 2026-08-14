@@ -128,6 +128,17 @@ const PopoverContent = ({ contract }: TPopoverContent) => (
                 </div>
             </PopoverItem>
         )}
+        {/* Contracts bought by a server-side automated run carry the run's id.
+            Without this they appear here indistinguishable from ones bought by
+            hand, which is a confusing way to find out something else is
+            trading the account. */}
+        {(contract as { auto_run_id?: string }).auto_run_id && (
+            <PopoverItem title={localize('Automated run')}>
+                <div className='transactions__popover-value'>
+                    {(contract as { auto_run_id?: string }).auto_run_id}
+                </div>
+            </PopoverItem>
+        )}
         {contract.entry_spot && (
             <PopoverItem title={localize('Entry spot')}>
                 <div className='transactions__popover-value'>{contract.entry_spot}</div>

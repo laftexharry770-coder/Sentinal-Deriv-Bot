@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AutomationService, type AutoRun, type AutoStrategy, type StartRunInput } from '@/services/automation.service';
+import {
+    AutomationService,
+    type AutoRun,
+    type AutoStrategy,
+    type StartedRun,
+    type StartRunInput,
+} from '@/services/automation.service';
 
 /**
  * The run id is kept across reloads.
@@ -29,6 +35,19 @@ export const useAutomation = (isAuthorised: boolean) => {
     const [error, setError] = useState<string | null>(null);
 
     const unwatch = useRef<(() => void) | null>(null);
+    // The server-side stream behind the local handler. Deriv keeps pushing to
+    // it until it is forgotten, so it is released whenever it is replaced, when
+    // the run ends, and when this screen goes away.
+    const subscriptionId = useRef<string | null>(null);
+
+    const release = useCallback(() => {
+        unwatch.current?.();
+        unwatch.current = null;
+        if (subscriptionId.current) {
+            void AutomationService.forget(subscriptionId.current);
+            subscriptionId.current = null;
+        }
+    }, []);
 
     const remember = (run: AutoRun | null) => {
         try {
@@ -40,26 +59,35 @@ export const useAutomation = (isAuthorised: boolean) => {
     };
 
     /** Follows one run's pushed updates, replacing any previous watch. */
-    const watch = useCallback((run: AutoRun) => {
-        unwatch.current?.();
-        unwatch.current = AutomationService.watch(run.run_id, updated => {
-            setActiveRun(updated);
-            remember(updated);
-            setRuns(previous => previous.map(item => (item.run_id === updated.run_id ? updated : item)));
-        });
-    }, []);
+    const watch = useCallback(
+        (run: AutoRun, streamId: string | null) => {
+            release();
+            subscriptionId.current = streamId;
+            unwatch.current = AutomationService.watch(run.run_id, updated => {
+                setActiveRun(updated);
+                remember(updated);
+                setRuns(previous => previous.map(item => (item.run_id === updated.run_id ? updated : item)));
+
+                // A stopped run sends nothing further; holding the stream open
+                // would leak it for the life of the connection.
+                if (updated.status === 'stopped') release();
+            });
+        },
+        [release]
+    );
 
     const adopt = useCallback(
-        (run: AutoRun) => {
+        ({ run, subscriptionId: streamId }: StartedRun) => {
             setActiveRun(run);
             remember(run);
             setRuns(previous => {
                 const without = previous.filter(item => item.run_id !== run.run_id);
                 return [run, ...without];
             });
-            watch(run);
+            if (run.status === 'stopped') release();
+            else watch(run, streamId);
         },
-        [watch]
+        [watch, release]
     );
 
     const refresh = useCallback(async () => {
@@ -86,8 +114,7 @@ export const useAutomation = (isAuthorised: boolean) => {
                 existing.find(run => run.status === 'running' || run.status === 'paused');
 
             if (candidate) {
-                const detailed = await AutomationService.get(candidate.run_id, true);
-                adopt(detailed);
+                adopt(await AutomationService.get(candidate.run_id, true));
             } else {
                 remember(null);
             }
@@ -104,18 +131,19 @@ export const useAutomation = (isAuthorised: boolean) => {
     }, [isAuthorised, refresh]);
 
     // Dropping the stream on unmount does not stop the run — nothing here
-    // should quietly stop one.
-    useEffect(() => () => unwatch.current?.(), []);
+    // should quietly stop one. It does tell Deriv to stop pushing to a screen
+    // that is no longer there.
+    useEffect(() => () => release(), [release]);
 
     /** Wraps a control so one failure cannot leave the panel stuck on "busy". */
     const control = useCallback(
-        async (action: () => Promise<AutoRun>) => {
+        async (action: () => Promise<StartedRun>) => {
             setBusy(true);
             setError(null);
             try {
-                const run = await action();
-                adopt(run);
-                return run;
+                const started = await action();
+                adopt(started);
+                return started.run;
             } catch (caught) {
                 setError(caught instanceof Error ? caught.message : String(caught));
                 return null;
@@ -137,9 +165,9 @@ export const useAutomation = (isAuthorised: boolean) => {
         clearError: () => setError(null),
         start: (input: Omit<StartRunInput, 'subscribe'>) =>
             control(() => AutomationService.start({ ...input, subscribe: true })),
-        pause: (run_id: string) => control(() => AutomationService.pause(run_id)),
-        resume: (run_id: string) => control(() => AutomationService.resume(run_id)),
-        stop: (run_id: string) => control(() => AutomationService.stop(run_id)),
+        pause: (run_id: string) => control(async () => ({ run: await AutomationService.pause(run_id), subscriptionId: subscriptionId.current })),
+        resume: (run_id: string) => control(async () => ({ run: await AutomationService.resume(run_id), subscriptionId: subscriptionId.current })),
+        stop: (run_id: string) => control(async () => ({ run: await AutomationService.stop(run_id), subscriptionId: subscriptionId.current })),
         attach: (run_id: string) => control(() => AutomationService.get(run_id, true)),
     };
 };
