@@ -8,6 +8,7 @@ import { api_base } from '../../api/api-base';
 import { getDirection, getLastDigit } from '../utils/helpers';
 import { expectPositiveInteger } from '../utils/sanitize';
 import * as constants from './state/constants';
+import { lastDigitsCondition } from '../utils/last-digits-condition';
 
 let tickListenerKey;
 
@@ -90,6 +91,20 @@ export default Engine =>
         getLastDigitList() {
             return new Promise(resolve => this.getTicks().then(ticks => resolve(this.getLastDigitsFromList(ticks))));
         }
+        /**
+         * Answers the `last_digits_condition` block: does the most recent
+         * window of last-digits satisfy the condition? Used by strategies
+         * imported from other bot builders, which ask this in one block rather
+         * than assembling it from a list and a loop.
+         */
+        checkLastDigitsCondition(condition, count, compare_value) {
+            return new Promise(resolve =>
+                this.getLastDigitList().then(digits =>
+                    resolve(lastDigitsCondition(digits, condition, count, compare_value))
+                )
+            );
+        }
+
         getLastDigitsFromList(ticks) {
             const digits = ticks.map(tick => {
                 return getLastDigit(tick.toFixed(this.getPipSize()));

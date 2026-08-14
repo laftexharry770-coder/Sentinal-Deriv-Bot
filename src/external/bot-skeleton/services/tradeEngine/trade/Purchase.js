@@ -10,6 +10,51 @@ let purchase_reference;
 
 export default Engine =>
     class Purchase extends Engine {
+        /**
+         * Buys a digit contract chosen at purchase time, with its own barrier.
+         *
+         * The stock purchase block can only buy the contract types the strategy
+         * declared up front, because those are the ones proposals were
+         * subscribed for. Strategies from other bot builders decide between
+         * even/odd and over/under while running, and name the barrier in the
+         * purchase itself — which the API supports through a buy carrying
+         * parameters rather than a proposal id.
+         *
+         * So this forces that path for the duration of the call, and puts the
+         * engine's own flags back afterwards whether it succeeded or not.
+         */
+        purchaseDigit(contract_type, prediction) {
+            const had_prediction = this.tradeOptions && 'prediction' in this.tradeOptions;
+            const previous_prediction = this.tradeOptions?.prediction;
+            const previous_subscription_required = this.is_proposal_subscription_required;
+
+            const has_prediction = prediction !== undefined && prediction !== null && `${prediction}` !== '';
+            if (has_prediction) {
+                this.tradeOptions = { ...this.tradeOptions, prediction: Number(prediction) };
+            }
+            this.is_proposal_subscription_required = false;
+
+            const restore = () => {
+                this.is_proposal_subscription_required = previous_subscription_required;
+                if (has_prediction) {
+                    this.tradeOptions = { ...this.tradeOptions };
+                    if (had_prediction) this.tradeOptions.prediction = previous_prediction;
+                    else delete this.tradeOptions.prediction;
+                }
+            };
+
+            return this.purchase(contract_type).then(
+                result => {
+                    restore();
+                    return result;
+                },
+                error => {
+                    restore();
+                    throw error;
+                }
+            );
+        }
+
         purchase(contract_type) {
             // Prevent calling purchase twice
             if (this.store.getState().scope !== BEFORE_PURCHASE) {
