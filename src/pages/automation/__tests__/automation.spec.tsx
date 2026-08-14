@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { setAutomationTransport, type AutomationTransport } from '@/services/automation.service';
+import { DerivWSAccountsService } from '@/services/derivws-accounts.service';
 import Automation from '../automation';
 
 const STRATEGY = {
@@ -49,10 +50,30 @@ jest.mock('@/external/deriv-core', () => ({
     getAuthInfo: () => ({ access_token: 'access-token' }),
 }));
 
-// The reset endpoint is REST, not the socket the rest of this talks to.
-const restCalls: Array<{ url: string; method: string }> = [];
+// Accounts are REST, not the socket the rest of this talks to.
+const DEMO_ACCOUNT = {
+    account_id: 'DOT12345678',
+    balance: '10000.00',
+    currency: 'USD',
+    group: 'row',
+    status: 'active',
+    account_type: 'demo',
+};
+const REAL_ACCOUNT = { ...DEMO_ACCOUNT, account_id: 'ROT12345678', balance: '250.00', account_type: 'real' };
+
+let accountsOnFile = [DEMO_ACCOUNT];
+
+const restCalls: Array<{ url: string; method: string; body: unknown }> = [];
 global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
-    restCalls.push({ url: String(url), method: init?.method ?? 'GET' });
+    const method = init?.method ?? 'GET';
+    restCalls.push({ url: String(url), method, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+
+    if (String(url).endsWith('/accounts') && method === 'POST') {
+        return { ok: true, status: 201, json: async () => ({ data: [REAL_ACCOUNT] }) };
+    }
+    if (String(url).endsWith('/accounts')) {
+        return { ok: true, status: 200, json: async () => ({ data: accountsOnFile }) };
+    }
     return { ok: true, status: 200, json: async () => ({}) };
 }) as unknown as typeof fetch;
 
@@ -79,6 +100,12 @@ const transport: AutomationTransport = {
 beforeEach(() => {
     sent.length = 0;
     restCalls.length = 0;
+    accountsOnFile = [DEMO_ACCOUNT];
+    // The service caches its in-flight fetch and stores the result; without
+    // this a test reads the previous test's accounts.
+    DerivWSAccountsService.clearCache();
+    DerivWSAccountsService.clearStoredAccounts();
+    sessionStorage.clear();
     isAuthorized = true;
     loginid = 'DOT12345678';
     localStorage.clear();
@@ -127,7 +154,9 @@ describe('the automation panel', () => {
         render(<Automation />);
         await screen.findByText('Martingale');
 
-        expect(screen.getByText(/Real account/i)).toBeInTheDocument();
+        // The kind is stated in more than one place now (the header badge and
+        // the accounts list), which is the point — it should be hard to miss.
+        expect(screen.getAllByText(/Real account/i).length).toBeGreaterThan(0);
 
         await user.click(screen.getByRole('button', { name: /Start run/i }));
 
@@ -181,30 +210,62 @@ describe('the automation panel', () => {
         expect(sent.some(request => 'auto_stop' in request)).toBe(false);
     });
 
-    it('offers to top the practice balance back up, on demo only', async () => {
+    it('tops the practice balance back up from the accounts list', async () => {
         const user = userEvent.setup();
         const { unmount } = render(<Automation />);
-        await screen.findByText('Martingale');
+        await screen.findByText('DOT12345678');
 
-        await user.click(screen.getByRole('button', { name: /Reset demo balance/i }));
+        await user.click(screen.getByRole('button', { name: /Reset balance/i }));
 
         await waitFor(() =>
             expect(
                 restCalls.some(call => call.method === 'POST' && call.url.includes('/reset-demo-balance'))
             ).toBe(true)
         );
-        expect(await screen.findByText(/Demo balance reset/i)).toBeInTheDocument();
         unmount();
     });
 
-    it('does not offer a balance reset on a real account', async () => {
-        // Real balances cannot be reset, and offering it would suggest the
-        // money on this account is not real.
-        loginid = 'ROT12345678';
-        render(<Automation />);
-        await screen.findByText('Martingale');
+    it('opens a real account, and does not switch to it by itself', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<Automation />);
+        await screen.findByText('DOT12345678');
 
-        expect(screen.queryByRole('button', { name: /Reset demo balance/i })).not.toBeInTheDocument();
+        // Opening an account stakes nothing, but it is still deliberate.
+        await user.click(screen.getByRole('button', { name: /Open a real account/i }));
+        await user.click(screen.getByRole('button', { name: /Yes, open a real account/i }));
+
+        await waitFor(() => {
+            const created = restCalls.find(call => call.method === 'POST' && call.url.endsWith('/accounts'));
+            expect(created?.body).toEqual({ currency: 'USD', group: 'row', account_type: 'real' });
+        });
+
+        // Trading it is a separate decision; the session stays where it was.
+        expect(localStorage.getItem('active_loginid')).not.toBe('ROT12345678');
+        unmount();
+    });
+
+    it('switches to a real account only when asked', async () => {
+        accountsOnFile = [DEMO_ACCOUNT, REAL_ACCOUNT];
+        const user = userEvent.setup();
+        const { unmount } = render(<Automation />);
+        await screen.findByText('ROT12345678');
+
+        // Named for what it is, not a bare "switch".
+        await user.click(screen.getByRole('button', { name: /Switch to real money/i }));
+
+        expect(localStorage.getItem('active_loginid')).toBe('ROT12345678');
+        expect(await screen.findByText(/real money/i)).toBeInTheDocument();
+        unmount();
+    });
+
+    it('offers no balance reset for a real account', async () => {
+        accountsOnFile = [REAL_ACCOUNT];
+        render(<Automation />);
+        await screen.findByText('ROT12345678');
+
+        // Real balances cannot be reset, and offering it would suggest the
+        // money on the account is not real.
+        expect(screen.queryByRole('button', { name: /Reset balance/i })).not.toBeInTheDocument();
     });
 
     it('remembers the run so a reload can still stop it', async () => {

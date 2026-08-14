@@ -79,7 +79,10 @@ const AppWrapper = observer(() => {
     const { clear } = summary_card;
     const { DASHBOARD, BOT_BUILDER } = DBOT_TABS;
     const init_render = React.useRef(true);
-    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial'];
+    // One entry per tab, in tab order. A tab missing from this list gets its
+    // URL rewritten to the dashboard's hash, and an unrecognised hash resolves
+    // to -1, which selects no tab at all.
+    const hash = ['dashboard', 'bot_builder', 'chart', 'tutorial', 'automation'];
     const { isDesktop } = useDevice();
     const location = useLocation();
     const navigate = useNavigate();
@@ -127,7 +130,10 @@ const AppWrapper = observer(() => {
     const GetHashedValue = (tab: number) => {
         tab_value = location.hash?.split('#')[1];
         if (!tab_value) return is_preview_mode ? BOT_BUILDER : tab;
-        return Number(hash.indexOf(String(tab_value)));
+        // An unknown hash — a stale link, or one from a build with different
+        // tabs — must not select tab -1, which renders an app with no content.
+        const index = hash.indexOf(String(tab_value));
+        return index === -1 ? tab : index;
     };
     const active_hash_tab = GetHashedValue(active_tab);
 
