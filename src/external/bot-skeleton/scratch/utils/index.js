@@ -158,12 +158,20 @@ export const load = async ({
     setLoading(true);
     // Delay execution to allow fully previewing previous strategy if users quickly switch between strategies.
     await delayExecution(100);
-    const showInvalidStrategyError = () => {
+    const showInvalidStrategyError = (detail = '') => {
         setLoadedLocalFile(null);
         botNotification(notification_message().invalid_xml);
         setLoading(false);
-        const error_message = localize('XML file contains unsupported elements. Please check or modify file.');
+        // Naming what was wrong with the file turns "invalid" into something
+        // that can be acted on: a strategy exported from another platform
+        // usually fails on a handful of blocks this build does not have, and
+        // there is no way to tell which without being told.
+        const error_message = detail
+            ? `${localize('XML file contains unsupported elements. Please check or modify file.')} ${detail}`
+            : localize('XML file contains unsupported elements. Please check or modify file.');
         globalObserver.emit('ui.log.error', error_message);
+        // eslint-disable-next-line no-console
+        console.error('[Load strategy]', error_message);
         return {
             error: error_message,
         };
@@ -172,8 +180,13 @@ export const load = async ({
     // Check if XML can be parsed correctly.
     try {
         const xmlDoc = new DOMParser().parseFromString(block_string, 'application/xml');
-        if (xmlDoc.getElementsByTagName('parsererror').length) {
-            return showInvalidStrategyError();
+        const parser_error = xmlDoc.getElementsByTagName('parsererror');
+        if (parser_error.length) {
+            return showInvalidStrategyError(
+                localize('The file is not valid XML: {{reason}}', {
+                    reason: (parser_error[0].textContent || '').trim().slice(0, 200),
+                })
+            );
         } else {
             show_snackbar && botNotification(notification_message().BOT_IMPORT);
         }
@@ -194,16 +207,21 @@ export const load = async ({
 
     // Check if there are any blocks in this strategy.
     if (!blockly_xml.length) {
-        return showInvalidStrategyError();
+        return showInvalidStrategyError(localize('The file contains no blocks.'));
     }
 
     // Check if all block types in XML are allowed.
-    const has_invalid_blocks = Array.from(blockly_xml).some(block => {
-        const block_type = block.getAttribute('type');
-        return !Object.keys(window.Blockly.Blocks).includes(block_type);
-    });
-    if (has_invalid_blocks) {
-        return showInvalidStrategyError();
+    const unsupported_blocks = Array.from(
+        new Set(
+            Array.from(blockly_xml)
+                .map(block => block.getAttribute('type'))
+                .filter(block_type => !Object.keys(window.Blockly.Blocks).includes(block_type))
+        )
+    );
+    if (unsupported_blocks.length) {
+        return showInvalidStrategyError(
+            localize('Unsupported blocks: {{blocks}}', { blocks: unsupported_blocks.join(', ') })
+        );
     }
 
     try {
@@ -243,7 +261,7 @@ export const load = async ({
         }
     } catch (e) {
         console.error(e); // eslint-disable-line
-        return showInvalidStrategyError();
+        return showInvalidStrategyError(e?.message ? String(e.message).slice(0, 200) : '');
     } finally {
         setLoading(false);
         setOpenButtonDisabled(false);

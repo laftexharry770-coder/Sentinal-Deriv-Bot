@@ -17,6 +17,7 @@ import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observab
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { useApiBase } from '@/hooks/useApiBase';
 import { useStore } from '@/hooks/useStore';
+import { lazyWithRetry } from '@/utils/lazy-with-retry';
 import {
     disableUrlParameterApplication,
     enableUrlParameterApplication,
@@ -44,9 +45,13 @@ import Dashboard from '../dashboard';
 import RunStrategy from '../dashboard/run-strategy';
 import './main.scss';
 
-const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
-const Tutorial = lazy(() => import('../tutorials'));
-const Automation = lazy(() => import('../automation'));
+// lazyWithRetry rather than lazy: a deploy renames chunk files, and a browser
+// holding the previous index.html asks for names that no longer exist. React
+// caches that rejection, so the tab stays dead until the page is reloaded by
+// hand — which is the reload this removes the need for.
+const ChartWrapper = lazyWithRetry(() => import('../chart/chart-wrapper'));
+const Tutorial = lazyWithRetry(() => import('../tutorials'));
+const Automation = lazyWithRetry(() => import('../automation'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();

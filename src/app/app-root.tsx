@@ -5,10 +5,11 @@ import ErrorComponent from '@/components/error-component/error-component';
 import ChunkLoader from '@/components/loader/chunk-loader';
 import { api_base } from '@/external/bot-skeleton';
 import { useStore } from '@/hooks/useStore';
+import { lazyWithRetry } from '@/utils/lazy-with-retry';
 import { localize } from '@deriv-com/translations';
 import './app-root.scss';
 
-const AppContent = lazy(() => import('./app-content'));
+const AppContent = lazyWithRetry(() => import('./app-content'));
 
 const AppRootLoader = () => {
     return <ChunkLoader message={localize('Loading...')} />;

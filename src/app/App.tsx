@@ -10,14 +10,15 @@ import { useLanguageFromURL } from '@/hooks/useLanguageFromURL';
 import { StoreProvider } from '@/hooks/useStore';
 import { completeOAuthLogin } from '@/utils/complete-oauth-login';
 import { isPreviewMode, PREVIEW_BASE_PATH } from '@/utils/is-preview-mode';
+import { lazyWithRetry } from '@/utils/lazy-with-retry';
 import { getRedirectUri } from '@/utils/redirect-uri';
 import { localize, TranslationProvider } from '@deriv-com/translations';
 import CoreStoreProvider from './CoreStoreProvider';
 import i18nInstance from './i18n';
 import './app-root.scss';
 
-const Layout = lazy(() => import('../components/layout'));
-const AppRoot = lazy(() => import('./app-root'));
+const Layout = lazyWithRetry(() => import('../components/layout'));
+const AppRoot = lazyWithRetry(() => import('./app-root'));
 
 /**
  * Component wrapper to handle language URL parameter
