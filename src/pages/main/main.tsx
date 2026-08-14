@@ -46,6 +46,7 @@ import './main.scss';
 
 const ChartWrapper = lazy(() => import('../chart/chart-wrapper'));
 const Tutorial = lazy(() => import('../tutorials'));
+const Automation = lazy(() => import('../automation'));
 
 const AppWrapper = observer(() => {
     const { connectionStatus } = useApiBase();
@@ -451,6 +452,25 @@ const AppWrapper = observer(() => {
                                         <Tutorial handleTabChange={handleTabChange} />
                                     </Suspense>
                                 </div>
+                            </div>
+                            <div
+                                label={
+                                    <>
+                                        <LabelPairedObjectsColumnCaptionRegularIcon
+                                            height='24px'
+                                            width='24px'
+                                            fill='var(--text-general)'
+                                        />
+                                        <Localize i18n_default_text='Automation' />
+                                    </>
+                                }
+                                id='id-automation'
+                            >
+                                <Suspense
+                                    fallback={<ChunkLoader message={localize('Please wait, loading automation...')} />}
+                                >
+                                    <Automation />
+                                </Suspense>
                             </div>
                         </Tabs>
                         {!isDesktop && right_tab_shadow && <span className='tabs-shadow tabs-shadow--right' />}{' '}

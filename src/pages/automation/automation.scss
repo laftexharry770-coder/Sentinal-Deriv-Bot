@@ -1,0 +1,273 @@
+.automation {
+    padding: 1.6rem;
+    overflow-y: auto;
+    height: 100%;
+    max-width: 90rem;
+    margin: 0 auto;
+
+    &__header {
+        margin-bottom: 1.6rem;
+    }
+
+    &__title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-general);
+    }
+
+    &__subtitle {
+        margin-top: 0.4rem;
+        font-size: 1.3rem;
+        line-height: 1.5;
+        color: var(--text-less-prominent);
+        max-width: 62rem;
+    }
+
+    /* Which account is about to be traded is the one thing that must never be
+       ambiguous, so it is stated rather than implied. */
+    &__account {
+        display: inline-block;
+        margin-top: 0.8rem;
+        padding: 0.3rem 0.8rem;
+        border-radius: 0.4rem;
+        font-size: 1.2rem;
+        font-weight: 600;
+
+        &--demo {
+            background: var(--status-info, #e6f3ff);
+            color: var(--text-general);
+        }
+
+        &--real {
+            background: var(--status-danger, #ffe6e6);
+            color: var(--status-danger-text, #a12626);
+        }
+    }
+
+    &__panel {
+        background: var(--general-section-1);
+        border: 1px solid var(--border-normal);
+        border-radius: 0.8rem;
+        padding: 1.6rem;
+        margin-bottom: 1.6rem;
+
+        h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-general);
+            margin-bottom: 1.2rem;
+        }
+
+        h4 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-general);
+            margin: 1.2rem 0 0.8rem;
+        }
+    }
+
+    &__row {
+        display: flex;
+        gap: 1.2rem;
+        flex-wrap: wrap;
+
+        > * {
+            flex: 1 1 16rem;
+        }
+    }
+
+    &__field {
+        margin-bottom: 1.2rem;
+
+        label {
+            display: block;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-general);
+            margin-bottom: 0.4rem;
+            text-transform: capitalize;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.8rem;
+            font-size: 1.4rem;
+            border: 1px solid var(--border-normal);
+            border-radius: 0.4rem;
+            background: var(--general-main-1);
+            color: var(--text-general);
+        }
+    }
+
+    &__hint,
+    &__muted {
+        font-size: 1.2rem;
+        line-height: 1.5;
+        color: var(--text-less-prominent);
+        margin-top: 0.4rem;
+    }
+
+    &__warning {
+        margin: 1.2rem 0;
+        padding: 0.8rem 1.2rem;
+        border-radius: 0.4rem;
+        background: var(--status-warning, #fff4e0);
+        color: var(--text-general);
+        font-size: 1.3rem;
+        line-height: 1.5;
+    }
+
+    &__error {
+        display: flex;
+        gap: 1.2rem;
+        align-items: flex-start;
+        margin-bottom: 1.6rem;
+        padding: 1rem 1.2rem;
+        border-radius: 0.4rem;
+        background: var(--status-danger, #ffe6e6);
+        color: var(--status-danger-text, #a12626);
+        font-size: 1.3rem;
+        line-height: 1.5;
+
+        span {
+            flex: 1;
+            word-break: break-word;
+        }
+    }
+
+    &__start {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.4rem;
+        font-weight: 700;
+        border: none;
+        border-radius: 0.4rem;
+        background: var(--brand-red-coral, #ff444f);
+        color: #fff;
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    }
+
+    &__controls {
+        display: flex;
+        gap: 0.8rem;
+        flex-wrap: wrap;
+        margin-top: 1.2rem;
+
+        button {
+            padding: 0.7rem 1.4rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border: 1px solid var(--border-normal);
+            border-radius: 0.4rem;
+            background: var(--general-main-1);
+            color: var(--text-general);
+            cursor: pointer;
+
+            &:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
+        }
+    }
+
+    &__stop {
+        border-color: var(--brand-red-coral, #ff444f) !important;
+        color: var(--brand-red-coral, #ff444f) !important;
+    }
+
+    &__summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.6rem 2.4rem;
+
+        dt {
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-less-prominent);
+        }
+
+        dd {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-general);
+            margin-top: 0.2rem;
+        }
+    }
+
+    &__status {
+        text-transform: capitalize;
+
+        &--running {
+            color: var(--status-success, #4bb4b3);
+        }
+
+        &--paused {
+            color: var(--status-warning-text, #b9761a);
+        }
+
+        &--stopped {
+            color: var(--text-less-prominent);
+        }
+    }
+
+    &__profit {
+        color: var(--status-success, #4bb4b3);
+    }
+
+    &__loss {
+        color: var(--brand-red-coral, #ff444f);
+    }
+
+    &__table {
+        width: 100%;
+        margin-top: 1.2rem;
+        border-collapse: collapse;
+        font-size: 1.3rem;
+        /* A long run's contract list must not push the layout sideways. */
+        display: block;
+        overflow-x: auto;
+
+        th,
+        td {
+            text-align: left;
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid var(--border-normal);
+            white-space: nowrap;
+        }
+
+        th {
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-less-prominent);
+        }
+
+        td {
+            color: var(--text-general);
+        }
+
+        button {
+            padding: 0.3rem 0.8rem;
+            font-size: 1.2rem;
+            border: 1px solid var(--border-normal);
+            border-radius: 0.4rem;
+            background: var(--general-main-1);
+            color: var(--text-general);
+            cursor: pointer;
+        }
+    }
+
+    &__empty {
+        padding: 4rem 2rem;
+        text-align: center;
+        font-size: 1.4rem;
+        color: var(--text-less-prominent);
+    }
+}
